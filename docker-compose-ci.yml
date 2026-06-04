@@ -1,0 +1,15 @@
+services:
+  minio:
+    image: minio/minio:latest
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    # Pre-create the test bucket as a directory under /data (MinIO stores buckets as folders),
+    # so the storage contract suite finds it already present.
+    entrypoint:
+      - sh
+      - -c
+      - "mkdir -p /data/unittest && exec minio server /data --console-address ':9001'"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
