@@ -500,14 +500,14 @@ public class ObsStorage implements StorageInterface, ObsConfig {
 
     @Override
     public List<URI> deleteByPrefix(String tenantId, @Nullable String namespace, URI storagePrefix) throws IOException {
-        return deleteByPrefix(getPath(tenantId, storagePrefix), tenantId);
+        return deleteByPrefix(storagePrefix, getPath(tenantId, storagePrefix));
     }
 
     private List<URI> deleteByPrefix(URI storagePrefix) throws IOException {
-        return deleteByPrefix(getPath(storagePrefix), null);
+        return deleteByPrefix(storagePrefix, getPath(storagePrefix));
     }
 
-    private List<URI> deleteByPrefix(String prefix, @Nullable String tenantId) throws IOException {
+    private List<URI> deleteByPrefix(URI storagePrefix, String prefix) throws IOException {
         try {
             List<String> keys = listAllObjects(prefix).stream()
                 .map(com.obs.services.model.ObsObject::getObjectKey)
@@ -525,10 +525,14 @@ public class ObsStorage implements StorageInterface, ObsConfig {
                 this.client.deleteObjects(new DeleteObjectsRequest(bucket, false, kvs));
             }
 
+            // Relativize by stripping the requested prefix by length and re-prepending the original
+            // kestra-relative path — same scheme as allByPrefix/list. Handles a configured `path`
+            // prefix and the tenant segment without parsing them back out of the key.
+            String base = storagePrefix.getPath();
             List<URI> deleted = new ArrayList<>(keys.size());
             for (String key : keys) {
-                String relative = (tenantId != null) ? key.replaceFirst(tenantId, "") : key;
-                deleted.add(URI.create("kestra://" + relative.replaceAll("/$", "")));
+                String relative = (base + key.substring(prefix.length())).replaceAll("/$", "");
+                deleted.add(URI.create("kestra://" + relative));
             }
             return deleted;
         } catch (ObsException e) {
