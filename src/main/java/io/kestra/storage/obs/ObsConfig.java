@@ -18,7 +18,7 @@ public interface ObsConfig {
     @Schema(
         title = "The OBS bucket where to store internal objects."
     )
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     @NotNull
     @NotBlank
     String getBucket();
@@ -27,7 +27,7 @@ public interface ObsConfig {
         title = "Object path prefix within the OBS bucket to store data.",
         description = "If set, all objects will be stored under this prefix (e.g. `bucket/path/`)."
     )
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     String getPath();
 
     @Schema(
@@ -35,20 +35,20 @@ public interface ObsConfig {
         description = "Explicit endpoint, e.g. `https://obs.cn-north-4.myhuaweicloud.com`, or a MinIO/S3-compatible " +
             "URL such as `http://localhost:9000`. Takes precedence over `region`."
     )
-    @PluginProperty
+    @PluginProperty(group = "connection")
     String getEndpoint();
 
     @Schema(
         title = "The Huawei Cloud region, used to derive the OBS endpoint when `endpoint` is not set.",
         description = "Resolves to `https://obs.<region>.myhuaweicloud.com`."
     )
-    @PluginProperty
+    @PluginProperty(group = "connection")
     String getRegion();
 
     @Schema(
         title = "The OBS access key (AK)."
     )
-    @PluginProperty
+    @PluginProperty(group = "connection")
     @NotNull
     @NotBlank
     String getAccessKey();
@@ -56,7 +56,7 @@ public interface ObsConfig {
     @Schema(
         title = "The OBS secret key (SK)."
     )
-    @PluginProperty
+    @PluginProperty(group = "connection")
     @NotNull
     @NotBlank
     String getSecretKey();
@@ -64,20 +64,20 @@ public interface ObsConfig {
     @Schema(
         title = "Optional security token for temporary AK/SK credentials."
     )
-    @PluginProperty
+    @PluginProperty(group = "connection")
     String getSecurityToken();
 
     @Schema(
         title = "Request-signing algorithm.",
         description = "`OBS` (default) for real OBS endpoints; `V2` for MinIO and other S3-compatible endpoints."
     )
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     AuthType getAuthType();
 
     @Schema(
         title = "Whether to use path-style bucket addressing.",
         description = "Required for MinIO and most S3-compatible endpoints. Defaults to `false`."
     )
-    @PluginProperty
+    @PluginProperty(group = "advanced")
     Boolean getPathStyleAccess();
 }
