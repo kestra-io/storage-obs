@@ -5,7 +5,6 @@ import com.obs.services.model.ObjectMetadata;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 /**
  * Round-trips user metadata through OBS / S3-compatible endpoints.
@@ -14,15 +13,15 @@ import java.util.regex.Pattern;
  * <ul>
  *   <li><b>Key case.</b> OBS and S3-compatible stores lowercase metadata header names, which would
  *       destroy mixed-case keys. We encode {@code camelCase} keys to {@code snake_case} on write and
- *       decode them back on read (same scheme as the AWS S3 storage plugin).</li>
+ *       decode them back on read. The encoding is reversible: an uppercase letter {@code X} becomes
+ *       {@code _x}, and a literal underscore is escaped to {@code __}, so keys that already contain
+ *       underscores survive the round-trip.</li>
  *   <li><b>Key prefixes.</b> OBS returns user metadata with an {@code x-obs-meta-} prefix; MinIO may
- *       double-prefix to {@code x-amz-meta-x-obs-meta-}. We strip these before decoding.</li>
+ *       double-prefix to {@code x-amz-meta-x-obs-meta-}. We strip these before deciding whether a key
+ *       is user metadata or a system header.</li>
  * </ul>
  */
 final class MetadataUtils {
-
-    private static final Pattern UPPERCASE = Pattern.compile("([A-Z])");
-    private static final Pattern WORD_SEPARATOR = Pattern.compile("_([a-z])");
 
     /**
      * System/HTTP response headers that the SDK mixes into the user-metadata map on a {@code getObject}
@@ -41,16 +40,16 @@ final class MetadataUtils {
             return Map.of();
         }
         Map<String, String> out = new HashMap<>();
-        metadata.forEach((key, value) ->
-            out.put(UPPERCASE.matcher(key).replaceAll("_$1").toLowerCase(), value)
-        );
+        metadata.forEach((key, value) -> out.put(encodeKey(key), value));
         return out;
     }
 
     /**
-     * Reads user metadata, strips any residual OBS/MinIO key prefix, and decodes {@code snake_case} back to
-     * {@code camelCase}. {@link ObjectMetadata#getMetadata()} returns the user-metadata map (prefix already
-     * stripped by the SDK); {@code getAllMetadata()} would also include system headers, so we avoid it.
+     * Reads user metadata, strips any residual OBS/MinIO key prefix, drops system headers, and decodes
+     * {@code snake_case} back to {@code camelCase}. {@link ObjectMetadata#getMetadata()} returns the response
+     * headers — both user metadata (prefix usually already stripped by the SDK) and system headers — so the
+     * prefix is stripped <em>before</em> the system-header check, otherwise a still-prefixed key (which
+     * contains hyphens) would be misclassified as a system header and dropped.
      */
     static Map<String, String> toRetrievedMetadata(ObjectMetadata meta) {
         if (meta == null) {
@@ -62,14 +61,55 @@ final class MetadataUtils {
         }
         Map<String, String> out = new HashMap<>();
         user.forEach((key, value) -> {
-            if (value == null || isSystemHeader(key)) {
+            if (value == null) {
                 return;
             }
-            String stored = stripMetaPrefix(key);
-            String decoded = WORD_SEPARATOR.matcher(stored).replaceAll(m -> m.group(1).toUpperCase());
-            out.put(decoded, String.valueOf(value));
+            String stripped = stripMetaPrefix(key);
+            if (isSystemHeader(stripped)) {
+                return;
+            }
+            out.put(decodeKey(stripped), String.valueOf(value));
         });
         return out;
+    }
+
+    /**
+     * Reversible {@code camelCase} -> lowercase {@code snake_case} encoding: each uppercase letter becomes
+     * {@code _} + its lowercase form, and a literal {@code _} is escaped to {@code __}.
+     */
+    private static String encodeKey(String key) {
+        StringBuilder out = new StringBuilder(key.length() + 4);
+        for (int i = 0; i < key.length(); i++) {
+            char c = key.charAt(i);
+            if (c == '_') {
+                out.append("__");
+            } else if (Character.isUpperCase(c)) {
+                out.append('_').append(Character.toLowerCase(c));
+            } else {
+                out.append(c);
+            }
+        }
+        return out.toString();
+    }
+
+    /** Inverse of {@link #encodeKey}: {@code __} -> {@code _}, {@code _x} -> {@code X}. */
+    private static String decodeKey(String key) {
+        StringBuilder out = new StringBuilder(key.length());
+        for (int i = 0; i < key.length(); i++) {
+            char c = key.charAt(i);
+            if (c == '_' && i + 1 < key.length()) {
+                char next = key.charAt(i + 1);
+                if (next == '_') {
+                    out.append('_');
+                } else {
+                    out.append(Character.toUpperCase(next));
+                }
+                i++;
+            } else {
+                out.append(c);
+            }
+        }
+        return out.toString();
     }
 
     /**

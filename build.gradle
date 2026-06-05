@@ -186,12 +186,21 @@ jar {
 
 shadowJar {
     archiveClassifier.set(null)
-    mergeServiceFiles()
+    // Exclude the jackson service file from the merge — it would otherwise dangle, referencing jackson
+    // classes that are excluded below (Kestra core already provides them on the runtime classpath).
+    mergeServiceFiles {
+        // ServiceFileTransformer matches patterns against the full path under META-INF/services/.
+        exclude 'META-INF/services/com.fasterxml.jackson.*'
+    }
     dependencies {
         exclude {
             it.moduleGroup.startsWith("com.fasterxml.jackson")
         }
     }
+    // The dependency-level exclude above misses multi-release class copies and the jackson service files
+    // (the merge transformer, once told to exclude them, lets them fall through to a normal copy). Drop both.
+    exclude 'META-INF/versions/*/com/fasterxml/jackson/**'
+    exclude 'META-INF/services/com.fasterxml.jackson.*'
 }
 
 /**********************************************************************************************************************\

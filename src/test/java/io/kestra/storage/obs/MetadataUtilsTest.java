@@ -68,16 +68,12 @@ class MetadataUtilsTest {
         assertThat(out, hasEntry("key2Name", "v2"));
     }
 
-    /**
-     * FINDING (low severity): a metadata key that already contains {@code _} + lowercase decodes to
-     * camelCase, so it does not round-trip. Kestra does not currently set snake_case metadata keys,
-     * so this is latent; pinned here to catch a change.
-     */
+    /** A key containing a literal underscore is escaped ({@code _} -> {@code __}) and round-trips intact. */
     @Test
-    void underscoreInputKey_isLossy() {
+    void underscoreInputKey_roundTrips() {
         Map<String, String> out = roundTrip(Map.of("my_key", "v"));
-        assertThat(out, hasEntry("myKey", "v"));
-        assertThat(out, not(hasKey("my_key")));
+        assertThat(out, hasEntry("my_key", "v"));
+        assertThat(out, not(hasKey("myKey")));
     }
 
     // ---- toRetrievedMetadata (read side) ---------------------------------------------------------
@@ -91,18 +87,20 @@ class MetadataUtilsTest {
         assertThat(MetadataUtils.toRetrievedMetadata(meta), is(Map.of("createdBy", "kestra")));
     }
 
-    /**
-     * FINDING (low severity): the {@code MetadataUtils} javadoc claims it strips an {@code x-obs-meta-}
-     * prefix, but a key still carrying that prefix contains a hyphen and is filtered out as a system
-     * header BEFORE {@link MetadataUtils#stripMetaPrefix} can run. So the prefix-stripping branches are
-     * effectively dead for the read path (the SDK strips the prefix itself). This pins that an
-     * unstripped prefixed key is dropped, not preserved.
-     */
+    /** A still-prefixed key is stripped (and decoded), not misclassified as a system header and dropped. */
     @Test
-    void retrieved_prefixedKeyIsDroppedNotStripped() {
+    void retrieved_stripsObsMetaPrefix() {
         ObjectMetadata meta = new ObjectMetadata();
         meta.setMetadata(new LinkedHashMap<>(Map.of("x-obs-meta-created_by", "kestra")));
-        assertThat(MetadataUtils.toRetrievedMetadata(meta), is(Map.of()));
+        assertThat(MetadataUtils.toRetrievedMetadata(meta), is(Map.of("createdBy", "kestra")));
+    }
+
+    /** MinIO's double prefix is also stripped. */
+    @Test
+    void retrieved_stripsDoublePrefix() {
+        ObjectMetadata meta = new ObjectMetadata();
+        meta.setMetadata(new LinkedHashMap<>(Map.of("x-amz-meta-x-obs-meta-created_by", "kestra")));
+        assertThat(MetadataUtils.toRetrievedMetadata(meta), is(Map.of("createdBy", "kestra")));
     }
 
     @Test

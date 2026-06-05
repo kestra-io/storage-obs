@@ -280,10 +280,11 @@ public class ObsStorage implements StorageInterface, ObsConfig {
             this.client.getObjectMetadata(bucket, key);
             return true;
         } catch (ObsException e) {
-            // 404, or MinIO's 400 when probing a trailing-slash key, mean "absent". Any other code
-            // (403, 5xx, ...) is a real error — propagate it rather than reporting "not found", so it
-            // isn't silently swallowed here or mistaken for "directory not yet created" by mkdirs.
-            if (e.getResponseCode() == 404 || e.getResponseCode() == 400) {
+            // 404 means "absent". MinIO answers 400 (not 404) only when probing a trailing-slash key, so
+            // treat 400 as absent solely for that shape. Any other code — including a 400 on a plain key,
+            // which signals a malformed request / misconfig rather than a missing object — propagates,
+            // so it isn't silently swallowed here or mistaken for "directory not yet created" by mkdirs.
+            if (e.getResponseCode() == 404 || (e.getResponseCode() == 400 && key.endsWith("/"))) {
                 return false;
             }
             throw e;
@@ -324,8 +325,9 @@ public class ObsStorage implements StorageInterface, ObsConfig {
                 .isDirectory(key.endsWith("/"))
                 .build();
         } catch (ObsException e) {
-            // MinIO returns 400 (not 404) when probing a non-existent trailing-slash key; treat both as not-found.
-            if (e.getResponseCode() == 404 || e.getResponseCode() == 400) {
+            // MinIO returns 400 (not 404) when probing a non-existent trailing-slash key; treat that shape as
+            // not-found. A 400 on a plain key is a malformed request / misconfig, not a missing object — surface it.
+            if (e.getResponseCode() == 404 || (e.getResponseCode() == 400 && key.endsWith("/"))) {
                 throw new FileNotFoundException("%s (File not found)".formatted(key));
             }
             throw new IOException(e);
