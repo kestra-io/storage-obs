@@ -12,8 +12,6 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,8 +57,6 @@ public class ObsStorage implements StorageInterface, ObsConfig {
 
     /** OBS / S3 batch-delete caps each request at 1000 keys. */
     private static final int DELETE_BATCH_SIZE = 1000;
-
-    private final Set<String> createdDirectories = ConcurrentHashMap.newKeySet();
 
     private String bucket;
     private String path;
@@ -284,7 +280,13 @@ public class ObsStorage implements StorageInterface, ObsConfig {
             this.client.getObjectMetadata(bucket, key);
             return true;
         } catch (ObsException e) {
-            return false;
+            // 404, or MinIO's 400 when probing a trailing-slash key, mean "absent". Any other code
+            // (403, 5xx, ...) is a real error — propagate it rather than reporting "not found", so it
+            // isn't silently swallowed here or mistaken for "directory not yet created" by mkdirs.
+            if (e.getResponseCode() == 404 || e.getResponseCode() == 400) {
+                return false;
+            }
+            throw e;
         }
     }
 
@@ -372,33 +374,40 @@ public class ObsStorage implements StorageInterface, ObsConfig {
         }
     }
 
+    /**
+     * Ensures a zero-byte marker exists for every ancestor directory of {@code key}.
+     *
+     * <p>Guarded by a HEAD against the store (the deepest directory marker) rather than an in-memory
+     * cache: this stays correct after a directory is deleted and re-created, and keeps no unbounded
+     * per-instance state. Mirrors the {@code storage-s3} backend.
+     */
     private void mkdirs(String key) {
         if (key == null || key.isEmpty()) {
             return;
         }
 
         String dirPath = key.endsWith("/") ? key : key.substring(0, key.lastIndexOf('/') + 1);
+        if (dirPath.isEmpty() || exists(dirPath)) {
+            return;
+        }
 
         String[] parts = dirPath.split("/");
         StringBuilder currentPath = new StringBuilder();
 
         for (String part : parts) {
-            if (!part.isEmpty()) {
-                currentPath.append(part).append("/");
-                String dir = currentPath.toString();
-
-                if (createdDirectories.add(dir)) {
-                    try {
-                        ObjectMetadata metadata = new ObjectMetadata();
-                        metadata.setContentLength(0L);
-                        PutObjectRequest req = new PutObjectRequest(bucket, dir, new ByteArrayInputStream(new byte[0]));
-                        req.setMetadata(metadata);
-                        this.client.putObject(req);
-                    } catch (ObsException e) {
-                        createdDirectories.remove(dir);
-                        log.warn("Failed to create directory: {}", dir, e);
-                    }
-                }
+            if (part.isEmpty()) {
+                continue;
+            }
+            currentPath.append(part).append("/");
+            String dir = currentPath.toString();
+            try {
+                ObjectMetadata metadata = new ObjectMetadata();
+                metadata.setContentLength(0L);
+                PutObjectRequest req = new PutObjectRequest(bucket, dir, new ByteArrayInputStream(new byte[0]));
+                req.setMetadata(metadata);
+                this.client.putObject(req);
+            } catch (ObsException e) {
+                log.warn("Failed to create directory: {}", dir, e);
             }
         }
     }
