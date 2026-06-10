@@ -1,0 +1,13 @@
+kestra:
+  queue:
+    type: memory
+  repository:
+    type: memory
+  storage:
+    type: obs
+    obs:
+      endpoint: http://localhost:9000
+      accessKey: minioadmin
+      secretKey: minioadmin
+      bucket: unittest
+      pathStyleAccess: true
