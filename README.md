@@ -29,7 +29,7 @@ kestra:
       # Optional:
       # path: kestra/             # object prefix within the bucket
       # securityToken: "<token>"  # for temporary AK/SK credentials
-      # authType: OBS             # OBS (default) | V2 (MinIO/S3-compatible) | V4
+      # authType: OBS             # OBS (default) | V2 (MinIO/S3-compatible)
       # pathStyleAccess: false    # true for MinIO/S3-compatible endpoints
 ```
 
@@ -42,7 +42,7 @@ kestra:
 | `region`          | one of   |         | Region used to derive `https://obs.<region>.myhuaweicloud.com`.          |
 | `path`            | no       |         | Object prefix within the bucket.                                         |
 | `securityToken`   | no       |         | Security token for temporary AK/SK credentials.                          |
-| `authType`        | no       | `OBS`   | Signing algorithm: `OBS`, `V2` (MinIO/S3), or `V4`.                      |
+| `authType`        | no       | `OBS`   | Signing algorithm: `OBS`, or `V2` (MinIO/S3-compatible).                 |
 | `pathStyleAccess` | no       | `false` | Path-style addressing; required for MinIO and most S3-compatible stores. |
 
 ## Development

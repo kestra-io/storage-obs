@@ -31,7 +31,7 @@ There is intentional, small duplication of the OBS client-construction routine b
 - `ObsClientFactory` — RunContext-free factory building an `ObsClient` from `ObsConfig` (endpoint
   resolution, AK/SK, auth type, path-style).
 - `ObsFileAttributes` — `FileAttributes` view over an OBS `ObjectMetadata`.
-- `AuthType` — `OBS` / `V2` / `V4` wrapping the SDK enum; use `V2` for MinIO/S3-compatible endpoints.
+- `AuthType` — `OBS` / `V2` wrapping the SDK enum; use `V2` for MinIO/S3-compatible endpoints.
 - `MetadataUtils` — normalises user-metadata keys (strips `x-obs-meta-` / `x-amz-meta-` prefixes).
 
 ### Tests
