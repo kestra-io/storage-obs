@@ -2,6 +2,7 @@ package io.kestra.storage.obs;
 
 import com.obs.services.ObsClient;
 import com.obs.services.ObsConfiguration;
+import com.obs.services.model.AuthTypeEnum;
 
 /**
  * Builds a configured {@link ObsClient} from an {@link ObsConfig}.
@@ -27,10 +28,14 @@ public final class ObsClientFactory {
 
         String endpoint = endpoint(config.getEndpoint(), config.getRegion());
 
+        boolean pathStyle = Boolean.TRUE.equals(config.getPathStyleAccess());
+
         ObsConfiguration obsConfig = new ObsConfiguration();
         obsConfig.setEndPoint(endpoint);
-        obsConfig.setPathStyle(Boolean.TRUE.equals(config.getPathStyleAccess()));
-        obsConfig.setAuthType((config.getAuthType() != null ? config.getAuthType() : AuthType.OBS).toSdkEnum());
+        obsConfig.setPathStyle(pathStyle);
+        // Path-style addressing signals a MinIO/S3-compatible endpoint, which only understands S3 v2
+        // signing; native OBS endpoints use Huawei's own signing algorithm.
+        obsConfig.setAuthType(pathStyle ? AuthTypeEnum.V2 : AuthTypeEnum.OBS);
         obsConfig.setHttpsOnly(endpoint.startsWith("https://"));
 
         if (!isBlank(config.getSecurityToken())) {

@@ -10,5 +10,4 @@ kestra:
       accessKey: minioadmin
       secretKey: minioadmin
       bucket: unittest
-      authType: V2
       pathStyleAccess: true

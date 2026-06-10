@@ -65,7 +65,6 @@ public class ObsStorage implements StorageInterface, ObsConfig {
     private String accessKey;
     private String secretKey;
     private String securityToken;
-    private AuthType authType;
     private Boolean pathStyleAccess;
 
     @JsonIgnore

@@ -68,15 +68,10 @@ public interface ObsConfig {
     String getSecurityToken();
 
     @Schema(
-        title = "Request-signing algorithm.",
-        description = "`OBS` (default) for real OBS endpoints; `V2` for MinIO and other S3-compatible endpoints."
-    )
-    @PluginProperty(group = "advanced")
-    AuthType getAuthType();
-
-    @Schema(
         title = "Whether to use path-style bucket addressing.",
-        description = "Required for MinIO and most S3-compatible endpoints. Defaults to `false`."
+        description = "Required for MinIO and most S3-compatible endpoints. Defaults to `false`. When enabled, " +
+            "the client also switches to S3 v2 request signing, since S3-compatible endpoints do not understand " +
+            "OBS-native signing."
     )
     @PluginProperty(group = "advanced")
     Boolean getPathStyleAccess();

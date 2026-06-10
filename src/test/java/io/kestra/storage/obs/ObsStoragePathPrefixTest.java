@@ -43,7 +43,6 @@ class ObsStoragePathPrefixTest {
             .accessKey("minioadmin")
             .secretKey("minioadmin")
             .bucket("unittest")
-            .authType(AuthType.V2)
             .pathStyleAccess(true)
             .path(PREFIX)
             .build();

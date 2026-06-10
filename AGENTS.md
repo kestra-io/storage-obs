@@ -29,15 +29,15 @@ There is intentional, small duplication of the OBS client-construction routine b
   directories, since OBS (like S3) has no native directories.
 - `ObsConfig` — `@PluginProperty` getters bound from `kestra.storage.obs.*`.
 - `ObsClientFactory` — RunContext-free factory building an `ObsClient` from `ObsConfig` (endpoint
-  resolution, AK/SK, auth type, path-style).
+  resolution, AK/SK, path-style). Derives the signing algorithm from `pathStyleAccess`: native OBS
+  signing by default, S3 v2 when path-style is enabled (MinIO/S3-compatible endpoints).
 - `ObsFileAttributes` — `FileAttributes` view over an OBS `ObjectMetadata`.
-- `AuthType` — `OBS` / `V2` wrapping the SDK enum; use `V2` for MinIO/S3-compatible endpoints.
 - `MetadataUtils` — normalises user-metadata keys (strips `x-obs-meta-` / `x-amz-meta-` prefixes).
 
 ### Tests
 
 `ObsStorageTest extends StorageTestSuite` runs the full storage contract from `io.kestra:tests`,
-configured by `src/test/resources/application-test.yml` against MinIO (`authType: V2`).
+configured by `src/test/resources/application-test.yml` against MinIO (`pathStyleAccess: true`).
 
 ```bash
 docker compose up -d minio
@@ -47,7 +47,8 @@ docker compose up -d minio
 ## Local rules
 
 - OBS SDK: `com.huaweicloud:esdk-obs-java-bundle:3.25.5` (shaded, no BOM conflicts, slf4j excluded).
-- `AuthType.V2` + `pathStyleAccess: true` are required for MinIO; real OBS uses `OBS` by default.
+- `pathStyleAccess: true` is required for MinIO; it also switches the client to S3 v2 signing. Real OBS
+  uses native OBS signing by default.
 - The `@Plugin.Id("obs")` string is the public storage type name — do not change it lightly.
 
 ## References
