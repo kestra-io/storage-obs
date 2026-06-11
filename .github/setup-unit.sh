@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Provisions the backend the storage contract suite (ObsStorageTest) runs against.
+# Provisions the backend the test suite runs against.
 #
-# - Pull requests (and local runs): bring up MinIO. Zero credentials, works for forks, stays offline.
-# - Post-merge (push / schedule / workflow_dispatch): write application-secrets.yml so the `secrets`
-#   Micronaut environment overlays the MinIO base config and the suite runs against a real Huawei Cloud
-#   OBS bucket. Each run writes under a unique key prefix so concurrent runs never collide.
+# MinIO is brought up on EVERY run: ObsStoragePathPrefixTest is a standalone unit test that talks to a
+# fixed MinIO endpoint (localhost:9000) and does not use the Micronaut config overlay, so it needs MinIO
+# present regardless of event.
+#
+# On post-merge runs (push / schedule / workflow_dispatch) we ADDITIONALLY write application-secrets.yml,
+# so the `secrets` Micronaut environment overlays the MinIO base config and the *contract suite*
+# (ObsStorageTest) runs against a real Huawei Cloud OBS bucket instead — exercising native OBS auth,
+# metadata and error semantics. Each run writes under a unique key prefix so concurrent runs never collide.
+#
+# Pull requests (and local runs) skip the overlay: MinIO only, zero credentials, fork-safe, offline.
 #
 # The OBS bucket + credentials are provisioned out-of-band (flows-engineering) and injected here as the
 # GitHub org secrets HUAWEI_ACCESS_KEY / HUAWEI_SECRET_ACCESS_KEY.
@@ -16,7 +22,7 @@ OBS_BUCKET="kestra-unit-test"
 SECRETS_FILE="src/test/resources/application-secrets.yml"
 
 setup_minio() {
-  echo "Bringing up MinIO for the storage contract suite ..."
+  echo "Bringing up MinIO for the test suite ..."
   docker compose -f docker-compose-ci.yml up -d
 
   echo "Waiting for MinIO to become ready on http://localhost:9000 ..."
@@ -58,9 +64,11 @@ kestra:
 EOF
 }
 
+# MinIO is always needed (ObsStoragePathPrefixTest); the OBS overlay is layered on top post-merge.
+setup_minio
+
 case "${GITHUB_EVENT_NAME:-}" in
   pull_request|"")
-    setup_minio
     ;;
   *)
     setup_obs

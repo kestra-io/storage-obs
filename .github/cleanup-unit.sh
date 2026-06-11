@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-# Mirror of setup-unit.sh: tear down whichever backend that run brought up.
-# - Pull requests / local: stop MinIO.
-# - Post-merge (real OBS): delete this run's key prefix from the shared bucket. Best-effort — the
-#   bucket's 1-day object-expiry lifecycle rule is the backstop for anything this misses.
+# Mirror of setup-unit.sh: MinIO is always torn down; on post-merge runs we also delete this run's OBS
+# key prefix from the shared bucket. Best-effort — the bucket's 1-day object-expiry lifecycle rule is the
+# backstop for anything this misses (e.g. when a failed Gradle step skips this cleanup entirely).
 
 OBS_ENDPOINT="https://obs.eu-west-101.myhuaweicloud.com"
 OBS_BUCKET="kestra-unit-test"
 
+docker compose -f docker-compose-ci.yml down -v || true
+
 case "${GITHUB_EVENT_NAME:-}" in
   pull_request|"")
-    docker compose -f docker-compose-ci.yml down -v || true
     ;;
   *)
     prefix="ci/${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-0}"
