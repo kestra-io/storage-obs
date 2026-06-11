@@ -17,7 +17,8 @@ set -euo pipefail
 # The OBS bucket + credentials are provisioned out-of-band (flows-engineering) and injected here as the
 # GitHub org secrets HUAWEI_ACCESS_KEY / HUAWEI_SECRET_ACCESS_KEY.
 
-OBS_ENDPOINT="https://obs.eu-west-101.myhuaweicloud.com"
+# eu-west-101 is Huawei's EU cloud — endpoints live under .myhuaweicloud.eu, not .com.
+OBS_ENDPOINT="https://obs.eu-west-101.myhuaweicloud.eu"
 OBS_BUCKET="kestra-unit-test"
 SECRETS_FILE="src/test/resources/application-secrets.yml"
 

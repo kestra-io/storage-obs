@@ -5,7 +5,8 @@ set -uo pipefail
 # key prefix from the shared bucket. Best-effort — the bucket's 1-day object-expiry lifecycle rule is the
 # backstop for anything this misses (e.g. when a failed Gradle step skips this cleanup entirely).
 
-OBS_ENDPOINT="https://obs.eu-west-101.myhuaweicloud.com"
+# eu-west-101 is Huawei's EU cloud — endpoints live under .myhuaweicloud.eu, not .com.
+OBS_ENDPOINT="https://obs.eu-west-101.myhuaweicloud.eu"
 OBS_BUCKET="kestra-unit-test"
 
 docker compose -f docker-compose-ci.yml down -v || true
