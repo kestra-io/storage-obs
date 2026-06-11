@@ -54,7 +54,7 @@ dependencies {
 
     // Huawei OBS SDK — shaded bundle, no BOM conflicts; exclude transitive slf4j to defer to Kestra's binding.
     // Exposed as `api` so the storage type is fully self-contained at runtime.
-    api("com.huaweicloud:esdk-obs-java-bundle:3.25.5") {
+    api("com.huaweicloud:esdk-obs-java-bundle:3.25.10") {
         exclude group: "org.slf4j"
     }
 }
