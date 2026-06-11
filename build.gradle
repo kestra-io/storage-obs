@@ -65,6 +65,22 @@ dependencies {
  **********************************************************************************************************************/
 test {
     useJUnitPlatform()
+
+    // On the real-OBS post-merge run, .github/setup-unit.sh writes application-secrets.yml (the `secrets`
+    // overlay) to point the inherited StorageTestSuite at a live Huawei Cloud OBS bucket. Two of those
+    // inherited contract tests are incompatible with that live environment and are skipped here — both
+    // still run on every PR/local run against MinIO (no overlay), so their coverage is preserved:
+    //   - getPath: asserts the storage returns paths with no `path` prefix, but the real-OBS run configures
+    //     one (path: ci/<run-id>) for per-run isolation and scoped cleanup. getPath is backend-independent
+    //     string logic and adds no OBS-specific coverage.
+    //   - metadata: asserts an exact user-metadata map, but the shared bucket's object-expiry lifecycle rule
+    //     makes OBS return an extra `expiration` response header that the test does not expect.
+    if (file("src/test/resources/application-secrets.yml").exists()) {
+        filter {
+            excludeTestsMatching "io.kestra.storage.obs.ObsStorageTest.getPath"
+            excludeTestsMatching "io.kestra.storage.obs.ObsStorageTest.metadata"
+        }
+    }
 }
 
 testlogger {
