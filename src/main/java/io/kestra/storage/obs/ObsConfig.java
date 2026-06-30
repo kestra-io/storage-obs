@@ -48,7 +48,7 @@ public interface ObsConfig {
     @Schema(
         title = "The OBS access key (AK)."
     )
-    @PluginProperty(group = "connection")
+    @PluginProperty(group = "connection", secret = true)
     @NotNull
     @NotBlank
     String getAccessKey();
@@ -56,7 +56,7 @@ public interface ObsConfig {
     @Schema(
         title = "The OBS secret key (SK)."
     )
-    @PluginProperty(group = "connection")
+    @PluginProperty(group = "connection", secret = true)
     @NotNull
     @NotBlank
     String getSecretKey();
@@ -64,7 +64,7 @@ public interface ObsConfig {
     @Schema(
         title = "Optional security token for temporary AK/SK credentials."
     )
-    @PluginProperty(group = "connection")
+    @PluginProperty(group = "connection", secret = true)
     String getSecurityToken();
 
     @Schema(
