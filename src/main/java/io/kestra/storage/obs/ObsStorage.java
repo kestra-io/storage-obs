@@ -6,6 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -114,7 +115,7 @@ public class ObsStorage implements StorageInterface, ObsConfig {
 
     @Override
     public StorageObject getWithMetadata(String tenantId, @Nullable String namespace, URI uri) throws IOException {
-        return getObject(uri, getPath(tenantId, URI.create(uri.getPath())));
+        return getObject(uri, getPath(tenantId, pathUri(uri.getPath())));
     }
 
     private StorageObject getObject(URI uri, String key) throws IOException {
@@ -148,7 +149,7 @@ public class ObsStorage implements StorageInterface, ObsConfig {
             if (!includeDirectories && objectKey.endsWith("/")) {
                 continue;
             }
-            result.add(URI.create("kestra://" + prefix.getPath() + objectKey.substring(key.length())));
+            result.add(createUri(prefix.getPath() + objectKey.substring(key.length())));
         }
         return result;
     }
@@ -266,12 +267,12 @@ public class ObsStorage implements StorageInterface, ObsConfig {
 
     @Override
     public boolean exists(String tenantId, @Nullable String namespace, URI uri) {
-        return exists(getPath(tenantId, URI.create(uri.getPath())));
+        return exists(getPath(tenantId, pathUri(uri.getPath())));
     }
 
     @Override
     public boolean existsInstanceResource(@Nullable String namespace, URI uri) {
-        return exists(getPath(URI.create(uri.getPath())));
+        return exists(getPath(pathUri(uri.getPath())));
     }
 
     private boolean exists(String key) {
@@ -366,7 +367,7 @@ public class ObsStorage implements StorageInterface, ObsConfig {
             req.setMetadata(metadata);
             this.client.putObject(req);
 
-            return URI.create("kestra://" + uri.getPath());
+            return createUri(uri.getPath());
         } catch (ObsException e) {
             throw new IOException(e);
         } finally {
@@ -448,7 +449,7 @@ public class ObsStorage implements StorageInterface, ObsConfig {
             return !this.deleteByPrefix(
                 tenantId,
                 namespace,
-                uri.getPath().endsWith("/") ? uri : URI.create(uri.getPath() + "/")
+                uri.getPath().endsWith("/") ? uri : pathUri(uri.getPath() + "/")
             ).isEmpty();
         }
 
@@ -467,7 +468,7 @@ public class ObsStorage implements StorageInterface, ObsConfig {
 
         if (fileAttributes.getType() == FileAttributes.FileType.Directory) {
             return !this.deleteByPrefix(
-                uri.getPath().endsWith("/") ? uri : URI.create(uri.getPath() + "/")
+                uri.getPath().endsWith("/") ? uri : pathUri(uri.getPath() + "/")
             ).isEmpty();
         }
 
@@ -533,7 +534,7 @@ public class ObsStorage implements StorageInterface, ObsConfig {
             List<URI> deleted = new ArrayList<>(keys.size());
             for (String key : keys) {
                 String relative = (base + key.substring(prefix.length())).replaceAll("/$", "");
-                deleted.add(URI.create("kestra://" + relative));
+                deleted.add(createUri(relative));
             }
             return deleted;
         } catch (ObsException e) {
@@ -545,7 +546,19 @@ public class ObsStorage implements StorageInterface, ObsConfig {
     // Helpers
     // ----------------------------------------------------------------------------------------------------------------
 
+    private static URI pathUri(String path) {
+        try {
+            return new URI(null, null, path, null);
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException("Invalid storage path: " + path, e);
+        }
+    }
+
     private static URI createUri(String key) {
-        return URI.create("kestra://%s".formatted(key));
+        try {
+            return new URI("kestra", "", key.startsWith("/") ? key : "/" + key, null, null);
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException("Invalid Kestra storage path: " + key, e);
+        }
     }
 }
