@@ -1,6 +1,7 @@
 services:
   minio:
-    image: quay.io/minio/minio:latest
+    # MinIO no longer publishes images to Docker Hub / quay.io; Chainguard's build is still pullable anonymously.
+    image: cgr.dev/chainguard/minio:latest
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
