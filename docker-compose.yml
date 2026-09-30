@@ -1,6 +1,7 @@
 services:
   minio:
-    image: quay.io/minio/minio:latest
+    # MinIO no longer publishes images to Docker Hub / quay.io; Chainguard's build is still pullable anonymously.
+    image: cgr.dev/chainguard/minio:latest
     command: server /data --console-address ":9001"
     ports:
       - "9000:9000"
